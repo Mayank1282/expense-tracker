@@ -30,7 +30,11 @@ class TransactionRequest extends FormRequest
             // it is yesterday. The latest date that is "today" somewhere on
             // earth is UTC+14, so that is the bound.
             'occurred_on' => ['required', 'date', 'before_or_equal:'.$this->latestSaneDate()],
-            'category_id' => ['nullable', 'string'],
+            // Every new entry must be filed under a real category. Nothing in
+            // the app can produce an uncategorised entry going forward —
+            // deleting a category is refused outright while it is in use — so
+            // "Uncategorised" no longer needs to be a choosable value here.
+            'category_id' => ['required', 'string'],
             'note' => ['nullable', 'string', 'max:240'],
         ];
     }
@@ -49,6 +53,7 @@ class TransactionRequest extends FormRequest
         return [
             'amount.min' => 'The smallest amount you can record is 0.01.',
             'occurred_on.before_or_equal' => 'A ledger records what happened, not what will.',
+            'category_id.required' => 'Choose a category before saving.',
         ];
     }
 

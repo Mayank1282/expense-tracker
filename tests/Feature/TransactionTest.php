@@ -13,11 +13,13 @@ class TransactionTest extends LedgerTestCase
     public function an_amount_is_stored_as_integer_minor_units(): void
     {
         $user = $this->makeUser();
+        $category = $this->makeCategory($user);
 
         $this->actingAs($user)->post('/transactions', [
             'type' => 'expense',
             'amount' => '1250.50',
             'occurred_on' => '2026-05-04',
+            'category_id' => (string) $category->getKey(),
         ])->assertRedirect();
 
         $entry = Transaction::first();
@@ -30,11 +32,13 @@ class TransactionTest extends LedgerTestCase
     public function direction_is_carried_by_type_not_by_a_negative_amount(): void
     {
         $user = $this->makeUser();
+        $category = $this->makeCategory($user);
 
         $this->actingAs($user)->post('/transactions', [
             'type' => 'expense',
             'amount' => '99.99',
             'occurred_on' => now()->toDateString(),
+            'category_id' => (string) $category->getKey(),
         ]);
 
         $entry = Transaction::first();
@@ -83,6 +87,7 @@ class TransactionTest extends LedgerTestCase
     public function todays_date_is_accepted_from_a_timezone_ahead_of_the_server(): void
     {
         $user = $this->makeUser();
+        $category = $this->makeCategory($user);
 
         // Fix the server clock late in the UTC day, so the next calendar date
         // is already "today" across Asia.
@@ -93,6 +98,7 @@ class TransactionTest extends LedgerTestCase
             'amount' => '250',
             // 03:31 IST on the 10th — the same instant.
             'occurred_on' => '2026-08-10',
+            'category_id' => (string) $category->getKey(),
         ])->assertSessionHasNoErrors();
 
         $this->assertSame(1, Transaction::count());
@@ -142,12 +148,16 @@ class TransactionTest extends LedgerTestCase
         $owner = $this->makeUser();
         $stranger = $this->makeUser();
         $entry = $this->makeTransaction($owner, ['amount' => 12345]);
+        // The stranger's own category — needed so the PUT clears validation
+        // and actually reaches the ownership check this test is exercising.
+        $strangerCategory = $this->makeCategory($stranger);
 
         $this->actingAs($stranger)
             ->put("/transactions/{$entry->getKey()}", [
                 'type' => 'expense',
                 'amount' => '1',
                 'occurred_on' => now()->toDateString(),
+                'category_id' => (string) $strangerCategory->getKey(),
             ])
             ->assertNotFound();
 
@@ -212,14 +222,60 @@ class TransactionTest extends LedgerTestCase
     public function the_smallest_recordable_amount_is_accepted(): void
     {
         $user = $this->makeUser();
+        $category = $this->makeCategory($user);
 
         $this->actingAs($user)->post('/transactions', [
             'type' => 'expense',
             'amount' => '0.01',
             'occurred_on' => now()->toDateString(),
+            'category_id' => (string) $category->getKey(),
         ])->assertSessionHasNoErrors();
 
         $this->assertSame(1, Transaction::first()->amount);
+    }
+
+    /**
+     * "Uncategorised" is a display state for entries that already exist (a
+     * seeded demo row, for instance) — it must never be something a person can
+     * deliberately choose when recording a new entry. Nothing in the app can
+     * produce an uncategorised entry going forward: category deletion is
+     * refused outright while a category is in use.
+     */
+    #[Test]
+    public function a_category_is_required_to_record_an_entry(): void
+    {
+        $user = $this->makeUser();
+
+        $this->actingAs($user)->post('/transactions', [
+            'type' => 'expense',
+            'amount' => '10',
+            'occurred_on' => now()->toDateString(),
+        ])->assertSessionHasErrors('category_id');
+
+        $this->actingAs($user)->post('/transactions', [
+            'type' => 'expense',
+            'amount' => '10',
+            'occurred_on' => now()->toDateString(),
+            'category_id' => '',
+        ])->assertSessionHasErrors('category_id');
+
+        $this->assertSame(0, Transaction::count());
+    }
+
+    #[Test]
+    public function a_category_is_required_to_edit_an_entry(): void
+    {
+        $user = $this->makeUser();
+        $category = $this->makeCategory($user);
+        $entry = $this->makeTransaction($user, ['category_id' => (string) $category->getKey()]);
+
+        $this->actingAs($user)->put("/transactions/{$entry->getKey()}", [
+            'type' => 'expense',
+            'amount' => '20',
+            'occurred_on' => now()->toDateString(),
+        ])->assertSessionHasErrors('category_id');
+
+        $this->assertSame((string) $category->getKey(), (string) $entry->fresh()->category_id);
     }
 
     /* ------------------------------------------------------------------ */

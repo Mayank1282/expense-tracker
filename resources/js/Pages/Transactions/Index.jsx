@@ -606,10 +606,17 @@ function EntryModal({ entry, categories, currency, onClose }) {
                         <select
                             {...props}
                             className="field"
+                            required
                             value={data.category_id}
                             onChange={(e) => setData('category_id', e.target.value)}
                         >
-                            <option value="">Uncategorised</option>
+                            {/* Disabled: this is a placeholder, not a real choice.
+                                Every entry needs a real category, so the empty
+                                value can be the initial state but can never be
+                                deliberately re-selected. */}
+                            <option value="" disabled>
+                                Select a category
+                            </option>
                             {options.map((category) => (
                                 <option key={category.id} value={category.id}>
                                     {category.name}

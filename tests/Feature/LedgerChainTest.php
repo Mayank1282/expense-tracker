@@ -218,11 +218,13 @@ class LedgerChainTest extends LedgerTestCase
     public function recording_a_transaction_appends_a_block(): void
     {
         $user = $this->makeUser();
+        $category = $this->makeCategory($user);
 
         $this->actingAs($user)->post('/transactions', [
             'type' => 'expense',
             'amount' => '250.50',
             'occurred_on' => now()->toDateString(),
+            'category_id' => (string) $category->getKey(),
         ]);
 
         $block = Block::orderBy('index', 'desc')->first();
@@ -252,12 +254,14 @@ class LedgerChainTest extends LedgerTestCase
     public function editing_an_entry_appends_rather_than_rewrites(): void
     {
         $user = $this->makeUser();
-        $entry = $this->makeTransaction($user, ['amount' => 1000]);
+        $category = $this->makeCategory($user);
+        $entry = $this->makeTransaction($user, ['amount' => 1000, 'category_id' => (string) $category->getKey()]);
 
         $this->actingAs($user)->put("/transactions/{$entry->getKey()}", [
             'type' => 'expense',
             'amount' => '20',
             'occurred_on' => now()->toDateString(),
+            'category_id' => (string) $category->getKey(),
         ]);
 
         $events = Block::orderBy('index')->pluck('event')->all();
