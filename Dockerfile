@@ -46,15 +46,22 @@ RUN composer install \
 # ---------------------------------------------------------------------------
 # Stage 3 — runtime
 # ---------------------------------------------------------------------------
-# Debian, not Alpine, and for one specific reason.
+# Debian bookworm, and the tag is pinned deliberately.
 #
-# On Alpine the mongodb extension links against musl's OpenSSL and fails the TLS
-# handshake with Atlas — "tlsv1 alert internal error calling hello". The
-# container starts, nginx serves, and every database call dies, which is exactly
-# what the first deploy did: the site was "live" while nothing could reach the
-# database. Debian's OpenSSL negotiates with Atlas correctly. The image is
-# larger; a database that connects is worth the megabytes.
-FROM php:8.4-fpm AS runtime
+# `php:8.4-fpm` now builds on trixie, which ships OpenSSL 3.5 — the first
+# release that offers post-quantum hybrid key exchange (X25519MLKEM768) FIRST in
+# its default group list. MongoDB Atlas's TLS terminator does not understand
+# that key share and rejects the handshake with internal_error(80), surfacing as:
+#
+#   error:0A000438:SSL routines::tlsv1 alert internal error calling hello
+#
+# That alert names neither the cipher nor the cause, which sent this chase
+# through Alpine, certificates and driver versions before a raw TLS socket test
+# showed PHP itself could not handshake either — proving it was never MongoDB.
+#
+# bookworm ships OpenSSL 3.0, which offers only classical groups. Revisit when
+# Atlas supports ML-KEM; until then this pin is load-bearing, not incidental.
+FROM php:8.4-fpm-bookworm AS runtime
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
