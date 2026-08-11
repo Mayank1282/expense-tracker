@@ -71,6 +71,8 @@ RUN apt-get update \
     && pecl install mongodb \
     && docker-php-ext-enable mongodb \
     && update-ca-certificates \
+    && sed -i 's/CipherString = DEFAULT@SECLEVEL=2/CipherString = DEFAULT@SECLEVEL=1/' \
+        /etc/ssl/openssl.cnf \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

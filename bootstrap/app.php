@@ -15,6 +15,18 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        /*
+         * Render terminates TLS at its load balancer and forwards plain HTTP to
+         * the container. Without this, Laravel believes the request was insecure
+         * and generates http:// asset URLs on an https:// page — the browser
+         * blocks them as mixed content and the app renders as a blank screen.
+         *
+         * `at: '*'` trusts any proxy, which is correct here: the container is
+         * only reachable through Render's balancer, so there is no untrusted
+         * path by which a forged X-Forwarded-Proto could arrive.
+         */
+        $middleware->trustProxies(at: '*');
+
         $middleware->web(append: [
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,

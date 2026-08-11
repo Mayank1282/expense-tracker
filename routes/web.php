@@ -18,6 +18,60 @@ use Illuminate\Support\Facades\Route;
  * `Inertia::render` receives the controller's props directly.
  */
 
+/*
+ * Temporary connectivity diagnostic.
+ *
+ * Render's free tier has no shell, so there is no way to inspect the container
+ * when the database will not connect. This reports what the runtime actually
+ * has — OpenSSL build, driver version — and tries both a raw TLS socket and a
+ * driver ping, returning the real error rather than a 503 page.
+ *
+ * Gated behind DIAG_TOKEN and removed once the connection is fixed.
+ */
+Route::get('/diag', function (\Illuminate\Http\Request $request) {
+    abort_unless(
+        env('DIAG_TOKEN') && hash_equals((string) env('DIAG_TOKEN'), (string) $request->query('token')),
+        404
+    );
+
+    $uri = (string) config('database.connections.mongodb.dsn');
+    $host = 'ac-dq8q6sh-shard-00-00.kigg5ei.mongodb.net';
+
+    $out = [
+        'php' => PHP_VERSION,
+        'openssl' => OPENSSL_VERSION_TEXT,
+        'driver_ext' => phpversion('mongodb'),
+        'uri_host' => parse_url(str_replace('mongodb+srv://', 'https://', $uri), PHP_URL_HOST),
+    ];
+
+    // Raw TLS to the shard, bypassing the driver entirely. If this succeeds the
+    // network and certificates are fine and the fault is in the driver.
+    $ctx = stream_context_create(['ssl' => ['peer_name' => $host, 'SNI_enabled' => true]]);
+    $sock = @stream_socket_client(
+        "ssl://{$host}:27017", $errno, $errstr, 15, STREAM_CLIENT_CONNECT, $ctx
+    );
+
+    if ($sock) {
+        $meta = stream_get_meta_data($sock);
+        $out['raw_tls'] = 'CONNECTED';
+        $out['raw_tls_protocol'] = stream_context_get_options($sock)['ssl']['protocol'] ?? 'n/a';
+        fclose($sock);
+    } else {
+        $out['raw_tls'] = "FAILED ({$errno}): {$errstr}";
+    }
+
+    // Now the driver itself.
+    try {
+        $m = new \MongoDB\Driver\Manager($uri, ['serverSelectionTimeoutMS' => 15000]);
+        $m->executeCommand('admin', new \MongoDB\Driver\Command(['ping' => 1]));
+        $out['driver_ping'] = 'CONNECTED';
+    } catch (\Throwable $e) {
+        $out['driver_ping'] = 'FAILED: '.substr($e->getMessage(), 0, 500);
+    }
+
+    return response()->json($out, 200, [], JSON_PRETTY_PRINT);
+});
+
 Route::get('/', [PageController::class, 'landing'])->name('landing');
 Route::get('/emi', [PageController::class, 'emi'])->name('emi');
 
