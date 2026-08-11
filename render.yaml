@@ -1,0 +1,37 @@
+# Render blueprint.
+#
+# Render has no PHP runtime, so this deploys as a Docker image — the same
+# lesson Project 3 ran into. Because Project 4 is a monolith there is exactly
+# one service here: no separate frontend deployment, no CORS origin to keep in
+# sync, no second free tier to wake up before a demo.
+services:
+  - type: web
+    name: ledger
+    runtime: docker
+    plan: free
+    region: singapore # keep this close to the Atlas cluster's region
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /up
+    envVars:
+      - key: APP_NAME
+        value: Ledger
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: 'false'
+      - key: APP_KEY
+        sync: false # php artisan key:generate --show, then paste into the dashboard
+      - key: APP_URL
+        sync: false
+      - key: MONGODB_URI
+        sync: false # the mongodb+srv:// string from MongoDB Atlas
+      - key: MONGODB_DATABASE
+        value: ledger
+      - key: SESSION_DRIVER
+        value: file
+      - key: CACHE_STORE
+        value: file
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: LOG_CHANNEL
+        value: stderr

@@ -1,0 +1,725 @@
+@import 'tailwindcss';
+
+/* ---------------------------------------------------------------------------
+   LEDGER — Material 3 with skeuomorphic accents
+   ---------------------------------------------------------------------------
+   Depth here is tonal and optical, the way Material 3 does it, with a light
+   skeuomorphic layer on top: raised surfaces carry a faint top highlight and a
+   soft gradient so they read as physical without pretending to be leather.
+
+   Three rules hold it together:
+     1. Elevation is expressed by TONE first (a lighter surface container) and
+        shadow second. Shadow alone on a dark theme reads as mud.
+     2. Interactive surfaces get an M3 state layer — the foreground colour at
+        8% on hover, 12% on press — never an opacity change on the whole element.
+     3. Radii follow the M3 shape scale. Nothing is square, nothing is a pill
+        unless it is genuinely a chip or FAB.
+--------------------------------------------------------------------------- */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+    --font-display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, 'Courier New', monospace;
+    --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+
+    /* M3 shape scale */
+    --radius-xs: 4px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+    --radius-2xl: 28px;
+
+    --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* ---------------------------------------------------------------------------
+   Tonal palette — seeded on a deep teal-green.
+   Indigo belongs to Projects 1 and 2 and clay to Project 3, so the seed here is
+   a green that suits money without being the obvious "fintech blue".
+--------------------------------------------------------------------------- */
+:root {
+    --primary: #00695a;
+    --on-primary: #ffffff;
+    --primary-container: #7ef8dc;
+    --on-primary-container: #00201a;
+
+    --secondary: #4a635c;
+    --on-secondary: #ffffff;
+    --secondary-container: #cce8e0;
+    --on-secondary-container: #06201a;
+
+    --tertiary: #6750a4;
+    --on-tertiary: #ffffff;
+    --tertiary-container: #e9ddff;
+    --on-tertiary-container: #22005d;
+
+    --error: #ba1a1a;
+    --on-error: #ffffff;
+    --error-container: #ffdad6;
+    --on-error-container: #410002;
+
+    --surface: #f4fbf8;
+    --surface-dim: #d5dbd8;
+    --surface-bright: #f4fbf8;
+    --surface-lowest: #ffffff;
+    --surface-low: #eef5f2;
+    --surface-container: #e8efec;
+    --surface-high: #e2e9e6;
+    --surface-highest: #dde4e1;
+
+    --on-surface: #161d1b;
+    --on-surface-variant: #3f4945;
+    --outline: #6f7975;
+    --outline-variant: #bfc9c4;
+
+    --scrim: 0 0 0;
+    --shadow-rgb: 0 0 0;
+    --shadow-strength: 1;
+
+    /* Semantic aliases used by the ledger itself. */
+    --income: #00695a;
+    --on-income: #ffffff;
+    --income-container: #7ef8dc;
+    --expense: #6750a4;
+    --on-expense: #ffffff;
+    --expense-container: #e9ddff;
+
+    color-scheme: light;
+}
+
+.dark {
+    --primary: #5edbc0;
+    --on-primary: #003730;
+    --primary-container: #005046;
+    --on-primary-container: #7ef8dc;
+
+    --secondary: #b1ccc4;
+    --on-secondary: #1c352f;
+    --secondary-container: #334b45;
+    --on-secondary-container: #cce8e0;
+
+    --tertiary: #d0bcff;
+    --on-tertiary: #381e72;
+    --tertiary-container: #4f378b;
+    --on-tertiary-container: #e9ddff;
+
+    --error: #ffb4ab;
+    --on-error: #690005;
+    --error-container: #93000a;
+    --on-error-container: #ffdad6;
+
+    --surface: #0e1513;
+    --surface-dim: #0e1513;
+    --surface-bright: #343b39;
+    --surface-lowest: #090f0e;
+    --surface-low: #161d1b;
+    --surface-container: #1a211f;
+    --surface-high: #252b2a;
+    --surface-highest: #303634;
+
+    --on-surface: #dee4e1;
+    --on-surface-variant: #bfc9c4;
+    --outline: #899390;
+    --outline-variant: #3f4945;
+
+    --shadow-strength: 1.6;
+
+    --income: #5edbc0;
+    --on-income: #003730;
+    --income-container: #005046;
+    --expense: #d0bcff;
+    --on-expense: #381e72;
+    --expense-container: #4f378b;
+
+    color-scheme: dark;
+}
+
+@layer base {
+    html {
+        -webkit-text-size-adjust: 100%;
+        scrollbar-gutter: stable;
+    }
+
+    body {
+        background-color: var(--surface);
+        color: var(--on-surface);
+        font-family: var(--font-display);
+        font-weight: 500;
+        min-height: 100dvh;
+    }
+
+    /* Ambient tonal wash. Two very soft radial fields give the page a sense of
+       light coming from somewhere, which is what stops a flat tonal palette
+       reading as grey card stock. Fixed so it never scrolls. */
+    body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        background:
+            radial-gradient(58rem 42rem at 12% -8%, color-mix(in oklab, var(--primary) 16%, transparent), transparent 62%),
+            radial-gradient(46rem 38rem at 105% 6%, color-mix(in oklab, var(--tertiary) 13%, transparent), transparent 60%);
+    }
+
+    :where(td, th, input[type='number'], .tnum) {
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* Tailwind's preflight leaves <button> on the default arrow cursor, so every
+       control that is not wearing the .btn class (pagination, icon buttons, the
+       rows-per-page select, checkboxes) looked unclickable. Set once here rather
+       than remembered per component. */
+    :where(button, [role='button'], summary, label[for], a[href]):not(:disabled) {
+        cursor: pointer;
+    }
+
+    :where(select, input[type='checkbox'], input[type='radio'], input[type='range']):not(:disabled) {
+        cursor: pointer;
+    }
+
+    /* Refusal should feel different from permission. */
+    :where(button, select, input, a)[disabled],
+    :where(button, select, input):disabled,
+    [aria-disabled='true'] {
+        cursor: not-allowed;
+    }
+
+    /* A date input's own picker button is a control in its own right. */
+    ::-webkit-calendar-picker-indicator {
+        cursor: pointer;
+    }
+
+    :focus-visible {
+        outline: 3px solid var(--primary);
+        outline-offset: 2px;
+        border-radius: var(--radius-xs);
+    }
+
+    ::selection {
+        background: color-mix(in oklab, var(--primary) 30%, transparent);
+        color: var(--on-surface);
+    }
+}
+
+@layer components {
+    /* --- Elevation ------------------------------------------------------- */
+    /* Tone carries the hierarchy; the shadow only seats the element. */
+    .elev-0 {
+        background: var(--surface-low);
+    }
+
+    .elev-1 {
+        background: var(--surface-container);
+        box-shadow:
+            0 1px 2px rgb(var(--shadow-rgb) / calc(0.08 * var(--shadow-strength))),
+            0 1px 3px 1px rgb(var(--shadow-rgb) / calc(0.06 * var(--shadow-strength)));
+    }
+
+    .elev-2 {
+        background: var(--surface-high);
+        box-shadow:
+            0 1px 2px rgb(var(--shadow-rgb) / calc(0.10 * var(--shadow-strength))),
+            0 2px 8px 2px rgb(var(--shadow-rgb) / calc(0.08 * var(--shadow-strength)));
+    }
+
+    .elev-3 {
+        background: var(--surface-highest);
+        box-shadow:
+            0 2px 4px rgb(var(--shadow-rgb) / calc(0.10 * var(--shadow-strength))),
+            0 6px 16px 4px rgb(var(--shadow-rgb) / calc(0.10 * var(--shadow-strength)));
+    }
+
+    /* --- The card: the structural unit --------------------------------- */
+    /*
+     * The skeuomorphic part: a 1px inset highlight along the top edge and a
+     * whisper of a vertical gradient. It is the same trick a physical button
+     * gets from a light above it, and at this strength you feel it rather than
+     * see it — which is the difference between tactile and toy-like.
+     */
+    .blk {
+        position: relative;
+        background:
+            linear-gradient(
+                180deg,
+                color-mix(in oklab, var(--on-surface) 3%, transparent) 0%,
+                transparent 42%
+            ),
+            var(--surface-container);
+        border: 1px solid var(--outline-variant);
+        border-radius: var(--radius-xl);
+        box-shadow:
+            inset 0 1px 0 color-mix(in oklab, #fff 55%, transparent),
+            0 1px 2px rgb(var(--shadow-rgb) / calc(0.07 * var(--shadow-strength))),
+            0 6px 18px -6px rgb(var(--shadow-rgb) / calc(0.14 * var(--shadow-strength)));
+    }
+
+    .dark .blk {
+        box-shadow:
+            inset 0 1px 0 color-mix(in oklab, #fff 8%, transparent),
+            0 1px 2px rgb(var(--shadow-rgb) / 0.4),
+            0 10px 26px -10px rgb(var(--shadow-rgb) / 0.55);
+    }
+
+    .blk-flat {
+        background: var(--surface-low);
+        border: 1px solid var(--outline-variant);
+        border-radius: var(--radius-lg);
+    }
+
+    .blk-sunken {
+        background: var(--surface-lowest);
+        border: 1px solid var(--outline-variant);
+        border-radius: var(--radius-lg);
+        box-shadow: inset 0 1px 3px rgb(var(--shadow-rgb) / calc(0.10 * var(--shadow-strength)));
+    }
+
+    /* Hairline used wherever a divider or a light edge is needed. */
+    .hairline {
+        border: 1px solid var(--outline-variant);
+    }
+
+    /* --- State layers ---------------------------------------------------- */
+    /* M3 interaction: an overlay of the foreground colour, not an opacity or a
+       colour swap, so a tinted surface keeps its identity while pressed. */
+    .state {
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
+    }
+
+    .state::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: currentColor;
+        opacity: 0;
+        transition: opacity 120ms var(--ease-standard);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .state:hover::after {
+        opacity: 0.08;
+    }
+
+    .state:active::after {
+        opacity: 0.12;
+    }
+
+    .pressable {
+        transition:
+            transform 140ms var(--ease-emphasized),
+            box-shadow 140ms var(--ease-emphasized);
+    }
+
+    .pressable:hover {
+        transform: translateY(-2px);
+    }
+
+    .pressable:active {
+        transform: translateY(0);
+    }
+
+    /* --- Buttons --------------------------------------------------------- */
+    .btn {
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        min-height: 44px;
+        padding: 0 1.4rem;
+        border: 1px solid transparent;
+        border-radius: var(--radius-2xl);
+        font-family: var(--font-display);
+        font-weight: 600;
+        font-size: 0.9375rem;
+        letter-spacing: 0.01em;
+        cursor: pointer;
+        white-space: nowrap;
+        transition:
+            box-shadow 140ms var(--ease-standard),
+            transform 140ms var(--ease-emphasized);
+    }
+
+    .btn::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: currentColor;
+        opacity: 0;
+        transition: opacity 120ms var(--ease-standard);
+        pointer-events: none;
+        z-index: -1;
+    }
+
+    .btn:hover:not(:disabled)::after {
+        opacity: 0.1;
+    }
+
+    .btn:active:not(:disabled)::after {
+        opacity: 0.16;
+    }
+
+    .btn:active:not(:disabled) {
+        transform: translateY(1px);
+    }
+
+    .btn:disabled {
+        opacity: 0.38;
+        cursor: not-allowed;
+        box-shadow: none;
+    }
+
+    /* Filled — the skeuomorphic highlight makes it read as a raised key. */
+    .btn-primary {
+        background:
+            linear-gradient(180deg, color-mix(in oklab, #fff 18%, transparent), transparent 60%),
+            var(--primary);
+        color: var(--on-primary);
+        box-shadow:
+            inset 0 1px 0 color-mix(in oklab, #fff 35%, transparent),
+            0 1px 2px rgb(var(--shadow-rgb) / 0.2),
+            0 4px 12px -4px color-mix(in oklab, var(--primary) 55%, transparent);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        box-shadow:
+            inset 0 1px 0 color-mix(in oklab, #fff 35%, transparent),
+            0 2px 4px rgb(var(--shadow-rgb) / 0.2),
+            0 8px 20px -6px color-mix(in oklab, var(--primary) 65%, transparent);
+    }
+
+    .btn-violet {
+        background:
+            linear-gradient(180deg, color-mix(in oklab, #fff 18%, transparent), transparent 60%),
+            var(--tertiary);
+        color: var(--on-tertiary);
+        box-shadow:
+            inset 0 1px 0 color-mix(in oklab, #fff 32%, transparent),
+            0 1px 2px rgb(var(--shadow-rgb) / 0.2),
+            0 4px 12px -4px color-mix(in oklab, var(--tertiary) 55%, transparent);
+    }
+
+    /* Tonal — M3's quieter filled button. */
+    .btn-tonal {
+        background: var(--secondary-container);
+        color: var(--on-secondary-container);
+    }
+
+    /* Outlined */
+    .btn-ghost {
+        background: transparent;
+        color: var(--primary);
+        border-color: var(--outline-variant);
+    }
+
+    .btn-ghost:hover:not(:disabled) {
+        border-color: var(--primary);
+    }
+
+    /* Text button — no container at all. */
+    .btn-text {
+        background: transparent;
+        color: var(--primary);
+        padding: 0 0.75rem;
+    }
+
+    .btn-danger {
+        background: var(--error);
+        color: var(--on-error);
+        box-shadow:
+            inset 0 1px 0 color-mix(in oklab, #fff 28%, transparent),
+            0 4px 12px -4px color-mix(in oklab, var(--error) 50%, transparent);
+    }
+
+    /* --- Form controls --------------------------------------------------- */
+    /* M3 filled field: tonal container, no heavy outline, focus shown by an
+       underline that thickens in the primary colour. */
+    .field {
+        display: block;
+        width: 100%;
+        min-height: 48px;
+        padding: 0.6rem 0.9rem;
+        background: var(--surface-highest);
+        color: var(--on-surface);
+        border: 1px solid transparent;
+        border-bottom: 2px solid var(--outline);
+        border-radius: var(--radius-sm) var(--radius-sm) var(--radius-xs) var(--radius-xs);
+        font-family: var(--font-mono);
+        font-size: 0.9375rem;
+        transition:
+            border-color 140ms var(--ease-standard),
+            background-color 140ms var(--ease-standard);
+    }
+
+    .field:hover {
+        background: color-mix(in oklab, var(--on-surface) 5%, var(--surface-highest));
+    }
+
+    .field:focus {
+        outline: none;
+        border-bottom-color: var(--primary);
+        border-bottom-width: 3px;
+        padding-bottom: calc(0.6rem - 1px);
+    }
+
+    .field::placeholder {
+        color: var(--on-surface-variant);
+        opacity: 0.75;
+    }
+
+    .field[aria-invalid='true'] {
+        border-bottom-color: var(--error);
+    }
+
+    /* The browser's own number spinner is a different design language in every
+       engine and matches none of them here. Hidden, and replaced by the stepper
+       in `NumberField`. */
+    .field[type='number'] {
+        appearance: textfield;
+        -moz-appearance: textfield;
+    }
+
+    .field[type='number']::-webkit-outer-spin-button,
+    .field[type='number']::-webkit-inner-spin-button {
+        appearance: none;
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    select.field {
+        appearance: none;
+        background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+            linear-gradient(135deg, currentColor 50%, transparent 50%);
+        background-position:
+            calc(100% - 18px) calc(50% + 1px),
+            calc(100% - 13px) calc(50% + 1px);
+        background-size: 5px 5px, 5px 5px;
+        background-repeat: no-repeat;
+        padding-right: 2.25rem;
+    }
+
+    .label {
+        display: block;
+        margin-bottom: 0.4rem;
+        font-family: var(--font-display);
+        font-size: 0.8125rem;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        color: var(--on-surface-variant);
+    }
+
+    .eyebrow {
+        font-family: var(--font-mono);
+        font-size: 0.6875rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--on-surface-variant);
+    }
+
+    /* --- Checkbox -------------------------------------------------------- */
+    /* The native control cannot be tinted to the theme, so it is redrawn: an
+       outlined square that fills with the primary colour and paints its own
+       tick. `indeterminate` gets a dash, for a partly-selected page. */
+    .tick {
+        appearance: none;
+        -webkit-appearance: none;
+        width: 1.15rem;
+        height: 1.15rem;
+        flex: none;
+        border: 2px solid var(--outline);
+        border-radius: var(--radius-xs);
+        background: transparent;
+        cursor: pointer;
+        display: inline-grid;
+        place-content: center;
+        transition:
+            background-color 120ms var(--ease-standard),
+            border-color 120ms var(--ease-standard);
+    }
+
+    .tick::after {
+        content: '';
+        width: 0.6rem;
+        height: 0.32rem;
+        border-left: 2.5px solid var(--on-primary);
+        border-bottom: 2.5px solid var(--on-primary);
+        transform: rotate(-45deg) translate(1px, -1px) scale(0);
+        transition: transform 120ms var(--ease-emphasized);
+    }
+
+    .tick:checked,
+    .tick:indeterminate {
+        background: var(--primary);
+        border-color: var(--primary);
+    }
+
+    .tick:checked::after {
+        transform: rotate(-45deg) translate(1px, -1px) scale(1);
+    }
+
+    .tick:indeterminate::after {
+        width: 0.62rem;
+        height: 0;
+        border-left: 0;
+        border-bottom: 2.5px solid var(--on-primary);
+        transform: none;
+    }
+
+    /* --- Chips ----------------------------------------------------------- */
+    .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.28rem 0.7rem;
+        background: var(--surface-high);
+        border: 1px solid var(--outline-variant);
+        border-radius: var(--radius-sm);
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        font-weight: 500;
+        letter-spacing: 0.01em;
+        white-space: nowrap;
+        color: var(--on-surface-variant);
+    }
+
+    /* --- Data table ------------------------------------------------------ */
+    .ledger-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: var(--font-mono);
+        font-size: 0.875rem;
+    }
+
+    .ledger-table thead th {
+        background: var(--surface-low);
+        /* Two-tone rule: the header must read as the top edge of a table, not
+           as another row that happens to be bold. */
+        border-bottom: 2px solid var(--outline-variant);
+        padding: 0.85rem 1rem;
+        text-align: left;
+        font-family: var(--font-display);
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        color: var(--on-surface-variant);
+    }
+
+    .ledger-table tbody td {
+        padding: 0.85rem 1rem;
+        border-bottom: 1px solid color-mix(in oklab, var(--outline-variant) 55%, transparent);
+        color: var(--on-surface);
+    }
+
+    .ledger-table tbody tr:last-child td {
+        border-bottom: 0;
+    }
+
+    /* A card whose radius is not clipped lets the table's own backgrounds paint
+       over the rounded corners, so the border appears to vanish at the edges.
+       Any surface holding a full-bleed table gets this. */
+    .blk-clip {
+        overflow: hidden;
+    }
+
+    .ledger-table tbody tr {
+        transition: background-color 120ms var(--ease-standard);
+    }
+
+    .ledger-table tbody tr:hover {
+        background: color-mix(in oklab, var(--primary) 7%, transparent);
+    }
+
+    .scroll-x {
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+    }
+
+    /* --- Progress track -------------------------------------------------- */
+    .track {
+        height: 0.75rem;
+        border-radius: 999px;
+        background: var(--surface-highest);
+        overflow: hidden;
+    }
+
+    .track > span {
+        display: block;
+        height: 100%;
+        border-radius: 999px;
+        background: var(--primary);
+        box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 40%, transparent);
+        transition: width 320ms var(--ease-emphasized);
+    }
+}
+
+@layer utilities {
+    .surface-glass {
+        background: color-mix(in oklab, var(--surface-container) 82%, transparent);
+        backdrop-filter: blur(16px) saturate(140%);
+        -webkit-backdrop-filter: blur(16px) saturate(140%);
+    }
+
+    /* Headline text needs room for descenders — a tight line-height on a large
+       display size clips the tail of a 'p' or 'g'. */
+    .display {
+        line-height: 1.08;
+        padding-bottom: 0.08em;
+    }
+}
+
+/* --- Responsive ----------------------------------------------------------- */
+@media (max-width: 640px) {
+    .blk {
+        border-radius: var(--radius-lg);
+    }
+
+    .btn {
+        padding: 0 1.1rem;
+        font-size: 0.875rem;
+    }
+}
+
+/* --- Motion preferences -------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* --- Print ---------------------------------------------------------------- */
+@media print {
+    body {
+        background: #fff;
+        color: #000;
+    }
+
+    body::before {
+        display: none;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+    .blk,
+    .blk-flat {
+        box-shadow: none;
+        border: 1px solid #999;
+        background: #fff;
+        break-inside: avoid;
+    }
+}
