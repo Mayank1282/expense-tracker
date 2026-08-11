@@ -26,6 +26,20 @@ php artisan view:cache
 
 # Indexes only. There are no tables to create in a document store, and the
 # migration is written to be safe to re-run.
-php artisan migrate --force --no-interaction || echo "Index migration skipped or already applied."
+#
+# A failure here is NOT fatal — the app should still boot and show its "database
+# unavailable" page rather than crash-loop. But it must be loud: the first
+# deploy swallowed a TLS handshake failure behind the word "skipped", which read
+# as success and hid the fact that nothing could reach Atlas at all.
+if php artisan migrate --force --no-interaction; then
+    echo "Indexes are in place."
+else
+    echo "======================================================================" >&2
+    echo " MIGRATION FAILED — the app cannot reach the database." >&2
+    echo " Check MONGODB_URI, the Atlas user password, and that Network Access" >&2
+    echo " allows 0.0.0.0/0. The site will boot but every page needing data" >&2
+    echo " will show the 'cannot reach the database' page." >&2
+    echo "======================================================================" >&2
+fi
 
 exec supervisord -c /etc/supervisord.conf

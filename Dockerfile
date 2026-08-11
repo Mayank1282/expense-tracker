@@ -46,20 +46,33 @@ RUN composer install \
 # ---------------------------------------------------------------------------
 # Stage 3 — runtime
 # ---------------------------------------------------------------------------
-FROM php:8.4-fpm-alpine AS runtime
+# Debian, not Alpine, and for one specific reason.
+#
+# On Alpine the mongodb extension links against musl's OpenSSL and fails the TLS
+# handshake with Atlas — "tlsv1 alert internal error calling hello". The
+# container starts, nginx serves, and every database call dies, which is exactly
+# what the first deploy did: the site was "live" while nothing could reach the
+# database. Debian's OpenSSL negotiates with Atlas correctly. The image is
+# larger; a database that connects is worth the megabytes.
+FROM php:8.4-fpm AS runtime
 
-RUN apk add --no-cache \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
         nginx \
         supervisor \
-        icu-dev \
-        openssl-dev \
-        pkgconfig \
-        $PHPIZE_DEPS \
+        ca-certificates \
+        libicu-dev \
+        libssl-dev \
+        pkg-config \
+        autoconf \
+        g++ \
+        make \
     && docker-php-ext-install intl opcache \
     && pecl install mongodb \
     && docker-php-ext-enable mongodb \
-    && apk del $PHPIZE_DEPS \
-    && rm -rf /tmp/pear
+    && update-ca-certificates \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /var/www/html
 
@@ -73,7 +86,8 @@ COPY docker/php.ini /usr/local/etc/php/conf.d/99-app.ini
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint
 RUN chmod +x /usr/local/bin/entrypoint
 
-RUN mkdir -p storage/framework/{cache,sessions,views} storage/logs bootstrap/cache \
+RUN mkdir -p storage/framework/cache storage/framework/sessions \
+        storage/framework/views storage/logs bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
