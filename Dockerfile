@@ -61,7 +61,7 @@ RUN composer install \
 #
 # bookworm ships OpenSSL 3.0, which offers only classical groups. Revisit when
 # Atlas supports ML-KEM; until then this pin is load-bearing, not incidental.
-FROM php:8.4-fpm-bookworm AS runtime
+FROM php:8.4.27-fpm-bookworm AS runtime
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -82,6 +82,9 @@ RUN apt-get update \
         /etc/ssl/openssl.cnf \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Print PHP version in build logs (PHP2Shell patch verification)
+RUN php -v
 
 WORKDIR /var/www/html
 
